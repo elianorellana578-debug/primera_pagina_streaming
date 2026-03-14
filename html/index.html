@@ -26,15 +26,22 @@
         h2 { border-bottom: 2px solid var(--surface); padding-bottom: 10px; margin-top: 40px; }
 
         /* Sección de Autenticación */
-        .auth-bar {
+        .auth-container {
             background: var(--surface);
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
             margin-bottom: 20px;
+        }
+
+        .auth-row {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
             align-items: center;
+            margin-bottom: 15px;
         }
+
+        .auth-row:last-child { margin-bottom: 0; }
 
         input {
             padding: 10px;
@@ -42,6 +49,8 @@
             border: none;
             background: #444;
             color: white;
+            flex: 1;
+            min-width: 150px;
         }
 
         button {
@@ -63,7 +72,7 @@
             gap: 10px;
         }
 
-        /* Catálogo de Películas */
+        /* Catálogo */
         .catalog {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -82,11 +91,7 @@
         .movie-card:hover {
             transform: translateY(-5px);
             border-color: var(--primary);
-            background: #3d3d3d;
         }
-
-        .movie-card h3 { margin: 0 0 10px 0; color: var(--primary); }
-        .movie-card p { font-size: 0.9em; color: var(--gray); line-height: 1.4; }
 
         /* Reproductor */
         #player-modal {
@@ -100,7 +105,7 @@
             z-index: 1000;
         }
 
-        video { width: 90%; max-width: 1000px; box-shadow: 0 0 50px rgba(229, 9, 20, 0.2); }
+        video { width: 90%; max-width: 1000px; }
 
         .close-btn {
             position: absolute;
@@ -108,32 +113,42 @@
             color: white; font-size: 40px; cursor: pointer;
         }
 
-        #status-msg { font-size: 0.8em; color: var(--primary); }
+        #status-msg { font-size: 0.8em; color: var(--primary); margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <header>
         <h1>WillFlix</h1>
-        <div id="status-msg">Estado: No identificado (Inicia sesión para guardar historial)</div>
+        <div id="status-msg">Estado: No identificado</div>
     </header>
 
-    <section class="auth-bar">
-        <input type="text" id="login-user" placeholder="Usuario">
-        <input type="password" id="login-pass" placeholder="Contraseña">
-        <button onclick="handleLogin()">Iniciar Sesión</button>
-        <button onclick="handleLogout()" style="background:#555">Salir</button>
+    <section class="auth-container">
+        <div class="auth-row">
+            <strong>Registro:</strong>
+            <input type="text" id="reg-user" placeholder="Nuevo Usuario">
+            <input type="email" id="reg-email" placeholder="Correo Electrónico">
+            <input type="password" id="reg-pass" placeholder="Contraseña">
+            <button onclick="handleSignUp()" style="background: #28a745;">Crear Cuenta</button>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
+        <div class="auth-row">
+            <strong>Ingreso:</strong>
+            <input type="text" id="login-user" placeholder="Usuario">
+            <input type="password" id="login-pass" placeholder="Contraseña">
+            <button onclick="handleLogin()">Entrar</button>
+            <button onclick="handleLogout()" style="background:#555">Salir</button>
+        </div>
     </section>
 
     <section class="search-container">
         <input type="text" id="search-input" placeholder="¿Qué quieres ver hoy?" style="flex-grow: 1;">
-        <button onclick="searchMovie()">Buscar Título</button>
+        <button onclick="searchMovie()">Buscar</button>
         <button onclick="loadMovies()" style="background:#555">Ver Todo</button>
     </section>
 
-    <h2>Catálogo Disponible</h2>
-    <div class="catalog" id="movie-catalog">
-        </div>
+    <h2>Catálogo</h2>
+    <div class="catalog" id="movie-catalog"></div>
 
     <div id="player-modal">
         <span class="close-btn" onclick="closePlayer()">&times;</span>
@@ -144,7 +159,37 @@
     <script>
         const API_BASE = "https://primera-pagina-streaming-1.onrender.com";
 
-        // --- LÓGICA DE AUTENTICACIÓN ---
+        // --- REGISTRO (CONECTA CON /sign_up) ---
+        async function handleSignUp() {
+            const username = document.getElementById('reg-user').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-pass').value;
+
+            if (!username || !email || !password) return alert("Llena todos los campos");
+
+            try {
+                const response = await fetch(`${API_BASE}/sign_up`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || "Error al registrar");
+                }
+
+                alert("¡Cuenta creada! Ya puedes iniciar sesión.");
+                // Limpiar campos
+                document.getElementById('reg-user').value = "";
+                document.getElementById('reg-email').value = "";
+                document.getElementById('reg-pass').value = "";
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // --- LOGIN (CONECTA CON /log_in) ---
         async function handleLogin() {
             const user = document.getElementById('login-user').value;
             const pass = document.getElementById('login-pass').value;
@@ -159,12 +204,12 @@
                     body: formData
                 });
 
-                if (!response.ok) throw new Error("Credenciales inválidas");
+                if (!response.ok) throw new Error("Usuario o contraseña incorrectos");
 
                 const data = await response.json();
                 localStorage.setItem('access_token', data.access_token);
                 document.getElementById('status-msg').innerText = `Estado: Conectado como ${user}`;
-                alert("Sesión iniciada correctamente");
+                alert("Bienvenido de nuevo");
                 loadMovies();
             } catch (err) {
                 alert(err.message);
@@ -176,92 +221,63 @@
             location.reload();
         }
 
-        // --- LÓGICA DE CATÁLOGO Y BÚSQUEDA ---
         async function loadMovies() {
             try {
                 const response = await fetch(`${API_BASE}/movies`);
                 const movies = await response.json();
                 renderCatalog(movies);
-            } catch (err) {
-                console.error("Error al cargar películas", err);
-            }
+            } catch (err) { console.error(err); }
         }
 
         async function searchMovie() {
             const title = document.getElementById('search-input').value;
             if (!title) return;
-
             try {
                 const response = await fetch(`${API_BASE}/movies/search/${title}`);
-                if (!response.ok) throw new Error("No encontrada");
+                if (!response.ok) throw new Error();
                 const movie = await response.json();
-                renderCatalog([movie]); // Mostramos solo la encontrada
-            } catch (err) {
-                alert("No se encontró ninguna película con ese nombre.");
-            }
+                renderCatalog([movie]);
+            } catch (err) { alert("No se encontró la película"); }
         }
 
         function renderCatalog(movies) {
             const container = document.getElementById('movie-catalog');
             container.innerHTML = '';
-            
             movies.forEach(movie => {
                 const div = document.createElement('div');
                 div.className = 'movie-card';
-                div.innerHTML = `
-                    <h3>${movie.title}</h3>
-                    <p><strong>Género:</strong> ${movie.genres}</p>
-                    <p>${movie.description}</p>
-                    <p><small>Año: ${movie.year}</small></p>
-                `;
-                // Usamos movie.id para el historial y movie.video_url para el stream
+                div.innerHTML = `<h3>${movie.title}</h3><p>${movie.genres}</p><p><small>${movie.description}</small></p>`;
                 div.onclick = () => openPlayer(movie.video_url, movie.title, movie.id);
                 container.appendChild(div);
             });
         }
 
-        // --- LÓGICA DE STREAMING e HISTORIAL ---
         function openPlayer(videoName, title, movieId) {
             const modal = document.getElementById('player-modal');
             const video = document.getElementById('video-player');
-            const titleTag = document.getElementById('current-movie-title');
-
-            titleTag.innerText = title;
+            document.getElementById('current-movie-title').innerText = title;
             video.src = `${API_BASE}/video/${videoName}`;
-            
             modal.style.display = 'flex';
             video.play();
-
-            // Llamada automática al historial al abrir
             saveToHistory(movieId);
         }
 
         async function saveToHistory(movieId) {
             const token = localStorage.getItem('access_token');
-            if (!token) return; // Si no hay login, no guarda historial
-
-            try {
-                await fetch(`${API_BASE}/history/${movieId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                console.log("Historial actualizado satisfactoriamente.");
-            } catch (err) {
-                console.error("Error al actualizar historial", err);
-            }
+            if (!token) return;
+            fetch(`${API_BASE}/history/${movieId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
         }
 
         function closePlayer() {
-            const modal = document.getElementById('player-modal');
             const video = document.getElementById('video-player');
             video.pause();
             video.src = "";
-            modal.style.display = 'none';
+            document.getElementById('player-modal').style.display = 'none';
         }
 
-        // Al cargar la página, mostramos el catálogo inicial
         window.onload = loadMovies;
     </script>
 </body>
