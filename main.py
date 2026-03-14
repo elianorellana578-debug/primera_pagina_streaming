@@ -1,9 +1,9 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse # <--- NUEVO
+from fastapi.responses import HTMLResponse # <--- ASEGÚRATE DE TENER ESTO
 from router import users, sign_up
-import os
+import os # <--- Y ESTO TAMBIÉN
 
 app = FastAPI()
 
@@ -18,12 +18,14 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(sign_up.router)
 
-# CAMBIO AQUÍ: En lugar de devolver un texto, devolvemos el archivo index.html
 @app.get("/", response_class=HTMLResponse)
 async def hi():
-    # Buscamos el archivo index.html en tu carpeta principal
-    if os.path.exists("index.html"):
-        with open("index.html", "r", encoding="utf-8") as f:
+    # Buscamos el archivo dentro de tu carpeta 'html'
+    ruta_html = os.path.join("html", "index.html")
+    
+    if os.path.exists(ruta_html):
+        with open(ruta_html, "r", encoding="utf-8") as f:
             return f.read()
-    return "API Online - Pero no se encontró el archivo index.html en la raíz del proyecto"
+    
+    return f"Error: No encontré el archivo en la ruta: {ruta_html}. Revisa que la carpeta se llame 'html' (en minúsculas)."
 
