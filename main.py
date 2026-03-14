@@ -14,10 +14,9 @@ async def hi():
     return "Bienvenido a ver pelicualas"
 
 
-# Esto va justo después de crear la variable 'app = FastAPI()'
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # En producción pondrías tu dominio real
+    allow_origins=["*"], # Esto permite que tu frontend en Render lo encuentre
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
